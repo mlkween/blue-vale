@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Color of the Song</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --sky-top:#eaf3fb;
+    --sky-mid:#dcebfb;
+    --sky-low:#f4ecf1;
+    --ink:#33404f;
+    --ink-soft:#5a6a7c;
+    --blue:#3f6bb0;
+    --blue-deep:#2e4a7a;
+    --card:rgba(255,255,255,0.72);
+    --card-line:rgba(120,150,190,0.28);
+    --btn-line:rgba(90,130,185,0.45);
+    --btn-fill:rgba(190,214,244,0.55);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'EB Garamond', Georgia, serif;
+    color:var(--ink);
+    background:linear-gradient(180deg,var(--sky-top) 0%,var(--sky-mid) 48%,var(--sky-low) 100%);
+    background-attachment:fixed;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:32px 18px;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* drifting petals */
+  .petal{position:fixed;top:-40px;width:10px;height:10px;border-radius:60% 0 60% 0;
+    background:radial-gradient(circle at 30% 30%, #bcd6f6, #7fa8de);
+    opacity:.0;pointer-events:none;z-index:0;filter:blur(.2px);
+    animation:fall linear infinite;}
+  @keyframes fall{
+    0%{transform:translateY(-40px) rotate(0deg);opacity:0;}
+    10%{opacity:.7;}
+    90%{opacity:.6;}
+    100%{transform:translateY(105vh) translateX(40px) rotate(320deg);opacity:0;}
+  }
+
+  .stage{position:relative;z-index:1;width:100%;max-width:660px;margin:auto 0;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--card-line);
+    border-radius:22px;
+    padding:44px 42px 34px;
+    box-shadow:0 18px 50px -24px rgba(60,90,140,0.45), 0 2px 10px -6px rgba(60,90,140,0.3);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    transition:opacity .55s ease, transform .55s ease;
+  }
+  .card.fading{opacity:0;transform:translateY(10px);}
+
+  .kicker{
+    font-family:'Cormorant Garamond',serif;
+    letter-spacing:.32em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--blue);
+    text-align:center;
+    margin:0 0 18px;
+    opacity:.85;
+  }
+  .scene-title{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:600;
+    font-size:30px;
+    line-height:1.2;
+    text-align:center;
+    color:var(--blue-deep);
+    margin:0 0 22px;
+  }
+  .prose p{
+    font-size:19px;
+    line-height:1.72;
+    margin:0 0 16px;
+    color:var(--ink);
+  }
+  .prose em{color:var(--blue-deep);font-style:italic;}
+  .prose .quiet{color:var(--ink-soft);font-style:italic;}
+
+  .choices{margin-top:26px;display:flex;flex-direction:column;gap:12px;}
+  .choice{
+    font-family:'EB Garamond',Georgia,serif;
+    font-size:17px;
+    color:var(--blue-deep);
+    background:rgba(255,255,255,0.5);
+    border:1px solid var(--btn-line);
+    border-radius:40px;
+    padding:14px 22px;
+    text-align:left;
+    cursor:pointer;
+    transition:background .25s ease, transform .12s ease, box-shadow .25s ease, border-color .25s;
+    line-height:1.45;
+  }
+  .choice:hover{
+    background:var(--btn-fill);
+    border-color:var(--blue);
+    box-shadow:0 8px 22px -14px rgba(46,74,122,0.7);
+    transform:translateY(-1px);
+  }
+  .choice:active{transform:translateY(0);}
+
+  /* subtle unlabeled progress — never names the destination */
+  .road{margin:28px auto 4px;max-width:220px;height:3px;border-radius:3px;
+    background:rgba(120,150,190,.22);overflow:hidden;}
+  .road span{display:block;height:100%;width:0;border-radius:3px;
+    background:linear-gradient(90deg,#9dbdec,#3f6bb0);transition:width .8s ease;}
+
+  /* ===== FINALE ===== */
+  #finale{position:fixed;inset:0;z-index:5;display:none;
+    background:linear-gradient(180deg,#eaf3fb,#f4ecf1);
+    overflow-y:auto;}
+  #finale.show{display:block;}
+  .finale-inner{min-height:100%;display:flex;flex-direction:column;align-items:center;
+    justify-content:flex-start;padding:48px 20px 64px;box-sizing:border-box;}
+  .finale-lead{margin-top:auto;}
+  .replay{margin-bottom:auto;}
+  .reveal-frame{
+    width:100%;max-width:920px;border-radius:18px;overflow:hidden;
+    box-shadow:0 30px 80px -30px rgba(46,74,122,.6);
+    opacity:0;transform:scale(1.04);filter:blur(14px);
+    transition:opacity 2.2s ease, transform 2.4s ease, filter 2.2s ease;
+  }
+  .reveal-frame.in{opacity:1;transform:scale(1);filter:blur(0);}
+  .reveal-frame img{display:block;width:100%;height:auto;}
+
+  .finale-lead{
+    font-family:'Cormorant Garamond',serif;
+    font-size:26px;color:var(--blue-deep);text-align:center;
+    max-width:640px;margin:0 0 26px;line-height:1.4;
+    opacity:0;transition:opacity 1.6s ease;
+  }
+  .finale-lead.in{opacity:1;}
+
+  .finale-msg{
+    max-width:620px;margin:34px auto 0;text-align:center;
+    opacity:0;transform:translateY(12px);transition:opacity 1.6s ease, transform 1.6s ease;
+  }
+  .finale-msg.in{opacity:1;transform:translateY(0);}
+  .finale-msg .birthday{
+    font-family:'Cormorant Garamond',serif;letter-spacing:.28em;text-transform:uppercase;
+    font-size:13px;color:var(--blue);margin:0 0 14px;}
+  .finale-msg p{font-size:19px;line-height:1.75;color:var(--ink);margin:0 0 16px;}
+  .finale-msg .sign{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--blue-deep);font-style:italic;margin-top:6px;}
+
+  .replay{margin:40px auto 0;display:inline-block;font-family:'EB Garamond',serif;
+    font-size:16px;color:var(--blue-deep);background:rgba(255,255,255,.6);
+    border:1px solid var(--btn-line);border-radius:40px;padding:12px 28px;cursor:pointer;
+    opacity:0;transition:opacity 1.4s ease, background .25s;}
+  .replay.in{opacity:1;}
+  .replay:hover{background:var(--btn-fill);}
+  a.replay{text-decoration:none;}
+  .replay.dl{margin-top:12px;}
+
+  @media (max-width:560px){
+    .card{padding:34px 24px 28px;}
+    .scene-title{font-size:25px;}
+    .prose p{font-size:17.5px;}
+    .finale-lead{font-size:22px;}
+  }
+
+  /* branching endings */
+  .end-title{color:#5a6a7c;}
+  .tease{margin:22px auto 6px;text-align:center;}
+  .tease-img{width:210px;height:58px;margin:0 auto 10px;border-radius:10px;
+    background:url('assets/blue-field-tiny.jpg') center/cover;
+    filter:blur(7px) saturate(1.15);opacity:.7;}
+  .tease-line{font-style:italic;color:var(--blue);font-size:15px;margin:0;}
+  .choice.retry{border-color:var(--blue);font-weight:500;}
+  .choice.restart-soft{opacity:.65;font-size:15px;}
+
+  /* hidden egg :) */
+  #egg{position:fixed;right:14px;bottom:12px;z-index:20;font-size:17px;
+    opacity:.28;cursor:pointer;user-select:none;transition:opacity .3s, transform .3s;}
+  #egg:hover{opacity:.85;transform:translateY(-2px) rotate(-6deg);}
+  #eggPop{position:fixed;right:12px;bottom:46px;z-index:20;width:216px;
+    background:rgba(255,255,255,.95);border:1px solid var(--btn-line);border-radius:16px;
+    padding:10px 12px 13px;box-shadow:0 14px 34px -16px rgba(46,74,122,.6);
+    opacity:0;pointer-events:none;transform:translateY(8px) scale(.98);
+    transition:opacity .35s, transform .35s;text-align:center;}
+  #eggPop.in{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;cursor:pointer;}
+  #eggSvg{display:block;margin:0 auto;}
+  #eggSvg *{transform-box:fill-box;}
+  .ewhite,.yolk,.yolkShine,.eface{transform:scale(0);transform-origin:center;}
+  .eface{opacity:0;}
+  .shellTop,.shellBot{transform-origin:center;}
+  #eggPop.go .shellTop{animation:lidTop .75s cubic-bezier(.4,.1,.5,1) forwards;}
+  #eggPop.go .shellBot{animation:lidBot 1s ease forwards;}
+  #eggPop.go .ewhite{animation:spread .8s ease .35s forwards;}
+  #eggPop.go .yolk{animation:pop .7s cubic-bezier(.3,1.5,.5,1) .6s forwards;}
+  #eggPop.go .yolkShine{animation:pop .7s cubic-bezier(.3,1.5,.5,1) .72s forwards;}
+  #eggPop.go .eface{animation:faceIn .7s ease 1.45s forwards;}
+  #eggPop.go .eggCap{animation:capIn .7s ease 1.85s forwards;}
+  @keyframes lidTop{to{transform:translate(-26px,-32px) rotate(-58deg);opacity:0;}}
+  @keyframes lidBot{0%{transform:translateY(0) rotate(0);}35%{transform:translateY(2px) rotate(1.2deg);}100%{transform:translateY(2px) rotate(0);}}
+  @keyframes spread{to{transform:scale(1);}}
+  @keyframes pop{0%{transform:scale(0);}70%{transform:scale(1.12);}100%{transform:scale(1);}}
+  @keyframes faceIn{from{transform:scale(.5);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .eggCap{margin-top:6px;font-size:13px;line-height:1.5;color:var(--blue-deep);opacity:0;}
+  @keyframes capIn{to{opacity:1;}}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     PERSONALISE ME  ▸  Edit the CONFIG block below.
+     - names show ONLY on the final screen (the story uses the
+       characters' names, Cinna & Bunilla, throughout).
+     ============================================================ -->
+<div class="stage">
+  <div class="card" id="card"></div>
+  <div class="road" id="roadWrap"><span id="road"></span></div>
+</div>
+
+<div id="finale">
+  <div class="finale-inner">
+    <div class="finale-lead" id="finaleLead"></div>
+    <div class="reveal-frame" id="revealFrame">
+      <img id="revealImg" src="assets/blue-field.jpg" alt="The field of blue flowers" />
+    </div>
+    <div class="finale-msg" id="finaleMsg"></div>
+    <button class="replay" id="replayBtn" onclick="restart()">walk it again ↺</button>
+    <a class="replay dl" id="dlBtn" href="assets/blue-field-full.jpg" download="Cinna-and-Bunilla-blue-field.jpg">save the artwork ↓</a>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ▸▸▸  CONFIG — the only part you need to personalise  ◂◂◂
+   ============================================================ */
+const CONFIG = {
+  // The two friends' REAL names (shown only on the final screen).
+  bridesmaidName: "Karen",     // ← your bridesmaid's real name
+  yourName:       "Karina",    // ← your (the bride's) real name
+
+  showBirthday: false,         // birthday is included in the message below
+
+  // The lead-in line that appears just before the artwork fades in.
+  finaleLead: "You rise the last low hill together — and there it is.",
+
+  // Your personal message, shown beneath the artwork.
+  // Use <p>…</p> for each paragraph. Edit freely.
+  finaleMessage: `
+    <p>A field of blue, that turned out to be real after all.</p>
+    <p>Thank you for being my bridesmaid, and for being an anchor through every
+    crossing and every storm. I couldn't have picked anyone I'd rather have
+    beside me.</p>
+    <p>Happy birthday, Karen!</p>
+  `,
+  // A small signature under the message (leave "" to hide it):
+  signOff: "with love, always<br>— Karina"
+};
+/* ============================================================
+   ▸ You can stop editing here. Story below. ◂
+   ============================================================ */
+
+const state = { muleName: "Turnip", retryTo: "c1" };
+const CHAPTER_ENTRY = {1:'c1',2:'c2',3:'c3',4:'c4',5:'c5',6:'c6',7:'c7',8:'c8'};
+
+const story = {
+  /* ===== CHAPTER 1 — Ul'dah ===== */
+  c1: { chapter:1,
+    kicker:"Ul'dah — The Quicksand",
+    title:"Two Friends, One Small World",
+    text:`
+      <p>There is a smell to Ul'dah that never leaves you: hot stone, cheap
+      incense, spilled ale gone sweet in the sun. <em>Cinna</em> — a Raen of the
+      far east, scale and horn the pale silver of river-ice — slips through the
+      tavern crowd to the corner booth, where <em>Bunilla</em> the Viera has
+      folded her long legs, tall ears nearly brushing the lantern.</p>
+      <p>They have shared this small life for a season: odd jobs, a rented room,
+      coin enough for two meals most days and one on the others. Tonight Cinna
+      sets a small tin box on the table and opens it.</p>
+      <p>Inside, pressed flat and dry, is a single flower — five petals, and
+      <em>blue.</em> Not sky-blue or dye-blue, but the blue of water where it goes
+      cold and stops being water and starts being distance. Bunilla goes very
+      still. Her people have a song for such a color: a bloom in a hidden fold of
+      the world, that you were meant to find once, with someone, before you died.
+      They had always thought it only a kind lie.</p>
+      <p>Cinna unrolls the old survey scrap the flower was pressed in. A cramped
+      hand has written, beside a mark in the far north:
+      <em>"Bloom in the high fold. Blue past believing. Not on any road."</em></p>
+    `,
+    choices:[
+      { label:"“That's the color from the song. Whatever it takes — I have to find it.”", next:"c2" },
+      { label:"“It's a dead weed and an old scrap. I can't let myself believe a lullaby.”", next:"end_smalllife" }
+    ]
+  },
+  end_smalllife:{ bad:true,
+    title:"The Small Life",
+    text:`<p>The flower goes back in its drawer. The seasons turn; the color fades
+      to a grey memory, and the song stays only a song. It isn't a tragedy — just
+      a road the two of you never took.</p>`,
+    tease:"Somewhere in the far north, a fold of the world goes on being blue — for no one. You never see it."
+  },
+
+  /* ===== CHAPTER 2 — The Blessing ===== */
+  c2:{ chapter:2,
+    kicker:"A Stranger in a Dust-Scarf",
+    title:"Lilira",
+    text:`
+      <p>For two days Bunilla talks herself out of it; Cinna only waits, the way
+      you wait for a friend to arrive at a thing. On the third day a small, neat
+      Lalafell woman sits down at their table uninvited — a scarf drawn over the
+      lower half of her face, eyes the color of good amber.</p>
+      <p><em>"Forgive me,"</em> she says. <em>"You have a flower you cannot
+      name."</em> She calls herself <em>Lilira</em>, keeper of accounts for a
+      house that trades in rare dyes, and asks — gently — if she might see it.</p>
+    `,
+    choices:[
+      { label:"Trust her. Open the tin and let her look.", next:"c2b" },
+      { label:"Snap the tin shut. Strangers in Ul'dah only want to take.", next:"end_suspicion" }
+    ]
+  },
+  end_suspicion:{ bad:true,
+    title:"The Closed Hand",
+    text:`<p>You brush her off and set out alone — unblessed, unguided. Without her
+      counsel you mistake the roads north; winter swallows the passes, and you turn
+      back with empty hands. Only later do you hear that the dust-scarfed clerk was
+      the Sultana herself, walking among her people.</p>`,
+    tease:"A door opened, just for a moment, onto the whole wide world. You closed it."
+  },
+  c2b:{ chapter:2,
+    kicker:"The Sultana's Secret",
+    title:"A Blessing, Freely Given",
+    text:`
+      <p>Lilira studies the flower a long time. <em>"This is not a dye,"</em> she
+      says. <em>"A dye is a color a person makes. This is a color a place made —
+      for no one, because that was simply what it was. There is only the going to
+      see it."</em> Go north, she says, to Coerthas; ask for a knight named
+      <em>Haurchefant</em>, and say Lilira sent you. Then she leaves a purse far
+      too heavy for a clerk, and is gone.</p>
+      <p class="quiet">That evening you see her face stamped on the very coins:
+      Nanamo Ul Namo, Sultana of Ul'dah, who walks among her people in disguise.</p>
+      <p>Her purse buys the journey north: warm coats, coils of rope, dried
+      rations — and, because the roads are long, a grumpy pack mule to carry it
+      all. It falls to you to name the beast.</p>
+    `,
+    choices:[
+      { label:"Name the much-insulted pack mule Turnip.", next:"c3", effect:()=>state.muleName="Turnip" },
+      { label:"Name the much-insulted pack mule Sir Radish.", next:"c3", effect:()=>state.muleName="Sir Radish" }
+    ]
+  },
+
+  /* ===== CHAPTER 3 — The Shroud ===== */
+  c3:{ chapter:3,
+    kicker:"The Black Shroud",
+    title:"A Shape at the Edge of the Fire",
+    text:`
+      <p>North into the green gloom, where the sun comes down in coins and the
+      paths tangle. On a night you lose the road badly, a figure appears at the
+      very edge of the firelight — cloaked, hooded, grey silk across the face.</p>
+      <p><em>"Peace,"</em> she says, in a cadence from somewhere far east.
+      <em>"I have been turning the wolves from your camp for the better part of a
+      bell."</em> She names herself <em>Yugiri</em> — she leads a people who lost
+      their home, and keeps to these woods while kinder hands decide their fate.</p>
+    `,
+    choices:[
+      { label:"Lower your blade. Offer her a place at the fire.", next:"c3b" },
+      { label:"Draw steel — a masked stranger in the dark means only harm.", next:"end_wolves" }
+    ]
+  },
+  end_wolves:{ bad:true,
+    title:"The Dark Wood",
+    text:`<p>You drive her off with bared steel — and the one who had been keeping
+      the wolves at bay melts back into the trees. The wolves do not stay away. By
+      grey dawn you flee the Shroud with your lives and little else, the north road
+      lost behind you.</p>`,
+    tease:"The stranger you turned away knew every quiet path to the top of the world."
+  },
+  c3b:{ chapter:3,
+    kicker:"One Traveler to Another",
+    title:"How to Walk Quiet",
+    text:`
+      <p>Yugiri keeps the watch so you can truly sleep, and by morning has taught
+      you three things about walking quiet — for <em>"where you are going, quiet
+      is the difference between arriving and not."</em></p>
+      <p>At the parting she gives you something better than any lesson.
+      <em>"Should you find it,"</em> she says, <em>"sit with it a while before you
+      turn for home. That was my mistake, going toward my own far place. I was so
+      bent on the reaching that I forgot to arrive."</em></p>
+    `,
+    choices:[
+      { label:"“We'll remember. We'll arrive.”", next:"c4" }
+    ]
+  },
+
+  /* ===== CHAPTER 4 — Coerthas ===== */
+  c4:{ chapter:4,
+    kicker:"Coerthas — The Snows",
+    title:"The Teeth of Winter",
+    text:`
+      <p>The snow begins the way old age begins — a little, then all at once. The
+      wind comes off the highlands with teeth in it. %MULE% the mule stops hating
+      you and starts leaning in for warmth. Bunilla, who has never in her long life
+      seen her own breath, stops in the road to stare at the little cloud of it and
+      laughs until she cries.</p>
+      <p>On the third day a dragon rows across the grey on wings like storm-sails.
+      That night the cold turns killing — and through the blizzard ahead glow the
+      lights of a great keep: Camp Dragonhead.</p>
+    `,
+    choices:[
+      { label:"Make for the keep's lights and ask for shelter.", next:"c4b" },
+      { label:"Push on through the dark — you can't afford to lose a day.", next:"end_frozen" }
+    ]
+  },
+  end_frozen:{ bad:true,
+    title:"The White Silence",
+    text:`<p>You press into the storm, certain the pass is just ahead. It is not.
+      The cold is patient and total. Dragonhead's patrol finds you half-buried and
+      carries you back fever-struck — and by the time you can travel again, the
+      season has closed the high roads for good.</p>`,
+    tease:"Warmth and a guide waited behind those lights. You walked the other way."
+  },
+  c4b:{ chapter:4,
+    kicker:"Camp Dragonhead",
+    title:"The Warmest Man in a Cold Country",
+    text:`
+      <p>The gates of Camp Dragonhead groan open, and the cold is gone all at
+      once — replaced by firelight, the smell of mulled wine, and a voice that
+      fills the whole hall. <em>"Guests! And half-frozen ones — quickly, quickly,
+      in by the fire!"</em></p>
+      <p><em>Haurchefant Greystone</em> is upon you before you can so much as bow:
+      a knight in blue and white with a smile that seems to warm the room a few
+      degrees on its own. He presses hot cups into your hands, drapes a fur about
+      your shoulders with his own, and clucks over Bunilla's frost-rimed ears as
+      though you were dear cousins come home at last. <em>"Friendship,"</em> he
+      declares, <em>"is the only thing in this frozen country worth hoarding — and
+      I hoard it shamelessly!"</em></p>
+      <p>He will hear nothing of your errand until you are warm and fed. Only when
+      the color has come back into your faces does he settle across from you, chin
+      in hand, eyes bright with delight. <em>"Now — tell me everything. I find the
+      people worth knowing are always the ones chasing something the rest of the
+      world calls impossible. And you two,"</em> he says, <em>"have the look."</em></p>
+    `,
+    choices:[
+      { label:"Raise your cup and toast him right back.", next:"c4c" },
+      { label:"Take out the blue flower, and tell him the whole of it.", next:"c4c" }
+    ]
+  },
+  c4c:{ chapter:4,
+    kicker:"Camp Dragonhead",
+    title:"A Friend by the Hearth",
+    text:`
+      <p>Haurchefant listens the way few people ever do — leaning in, doubting
+      nothing, laughing where you laugh, hushing where you go quiet. When you have
+      told it all, he is still a moment, then lifts his cup. <em>"To warm hearths,
+      and to green and giddy friendships,"</em> he says, <em>"and to a color at
+      the top of the world that two friends would cross the whole of it to see —
+      to our salad days!"</em></p>
+      <p><em>"And you should know,"</em> he adds, softer now, <em>"that whatever
+      comes of your road, you will always have a place by this fire. A life lived
+      in fear of the cold is a life half-lived — and here you are, the pair of you,
+      walking out into it hand in hand. I could not be more glad to have met
+      you."</em> He says it plainly, and means every word, and somehow that is the
+      warmest thing in the whole warm hall.</p>
+      <p>Then, practical again, he tells you of the one soul who has walked the
+      high folds where no road goes: <em>Estinien</em>, who hunts dragons for a
+      living. <em>"Do try not to look like one,"</em> he advises, with a wink.</p>
+    `,
+    choices:[
+      { label:"Go and find the Azure Dragoon.", next:"c5" }
+    ]
+  },
+
+  /* ===== CHAPTER 5 — The Azure Dragoon ===== */
+  c5:{ chapter:5,
+    kicker:"The Azure Dragoon",
+    title:"For a Color",
+    text:`
+      <p>Estinien is a lean, hard shape in stormcloud armor, and he does not want
+      to take you. <em>"A favor a decade in the earning,"</em> he mutters,
+      <em>"for a flower."</em> <em>"For a color,"</em> Bunilla corrects, before she
+      can stop herself — and something in the dragoon goes quiet.</p>
+      <p>His terms are flat: keep up; when I say down, you are already down; if you
+      slow me, I leave you.</p>
+    `,
+    choices:[
+      { label:"Accept his terms without a word of complaint.", next:"c6" },
+      { label:"Bristle — promise him you can handle anything the sky throws.", next:"end_leftbehind" }
+    ]
+  },
+  end_leftbehind:{ bad:true,
+    title:"The Road Refused",
+    text:`<p>Your boasting curdles what little patience he has. <em>"The sky does
+      not care what you can handle,"</em> he says, and shoulders his lance, and is
+      gone into the high hunt. Without a guide, the floating lands are a door with
+      no key. You have come so far to be turned back at the last mountain.</p>`,
+    tease:"The only man who knew the way to the fold walked off without you."
+  },
+
+  /* ===== CHAPTER 6 — The Floating Lands ===== */
+  c6:{ chapter:6,
+    kicker:"Abalathia — The Sea of Clouds",
+    title:"The Floating Lands",
+    text:`
+      <p>Where the mountains stop, the world floats on: islands roped together by
+      nothing, wind-worn bridges, white cloud below and then a long nothing.
+      Yugiri's lesson rings in your ears — go quiet, don't look down, trust your
+      guide.</p>
+      <p>A gale begins to rise. Estinien signs for the low, sheltered path that
+      hugs the cliffs — slower, but out of the open air.</p>
+    `,
+    choices:[
+      { label:"Follow his line exactly, eyes fixed on his back.", next:"c7" },
+      { label:"Cut across the open span — it's faster, and the wind's not so bad.", next:"end_sky" }
+    ]
+  },
+  end_sky:{ bad:true,
+    title:"Taken by the Sky",
+    text:`<p>On the open span the wind becomes a hand that wants you — and something
+      vast turns on the air, drawn to movement in the open. Estinien's shout, a blur
+      of lance; he buys you the seconds to scramble back. But the way ahead is
+      swallowed in storm, and he will not risk the open road again today.</p>`,
+    tease:"So close to the fold now — and turned back for the want of a little patience."
+  },
+
+  /* ===== CHAPTER 7 — The Storm & the Bridge ===== */
+  c7:{ chapter:7,
+    kicker:"The Storm",
+    title:"Before the Bridge",
+    text:`
+      <p>The storm comes on the ninth day, and it comes fast. Ahead lies one last
+      ancient span between you and the far shelf, the cloud-sea already boiling up
+      around it. Estinien's jaw is set. <em>"We cross now,"</em> he says,
+      <em>"or we wait it out."</em></p>
+    `,
+    choices:[
+      { label:"Rope yourselves together and go low and slow.", next:"c7b" },
+      { label:"Run for it — beat the storm across.", next:"end_storm" }
+    ]
+  },
+  end_storm:{ bad:true,
+    title:"The Span That Fell",
+    text:`<p>You run. The wind hits the bridge like a fist mid-span; the old stone
+      shrugs, and cracks, and gives. Estinien's gauntlet closes on your belt at the
+      last instant and hauls you back as the whole span falls away into the white —
+      but the crossing is gone, and with it the only road on.</p>`,
+    tease:"One span of old stone stood between you and the fold. Haste took it."
+  },
+  c7b:{ chapter:7,
+    kicker:"One Ridge Short of the World",
+    title:"Held",
+    text:`
+      <p>Roped and low, you are nearly across when the storm takes the bridge
+      anyway — and you slip, catching by your clever fingers on the broken lip,
+      the tin box tumbling from your coat into the cloud below, gone.</p>
+      <p><em>"It's gone — the proof—!"</em> you cry. But Cinna's arm is already
+      over the edge, her hand locked around your wrist. <em>"The flower was never
+      the color,"</em> she says, fierce and calm. <em>"We don't need it. Look at
+      me."</em> What do you do?</p>
+    `,
+    choices:[
+      { label:"Stop reaching for the box — turn, and swing your free hand up to hers.", next:"c7c" },
+      { label:"Let the flower go. It was never the color. Trust her, and climb.", next:"c7c" },
+      { label:"Grab her wrist with everything you have — she has never once let you fall.", next:"c7c" }
+    ]
+  },
+  c7c:{ chapter:7,
+    kicker:"Held",
+    title:"The Foolish Ones",
+    text:`
+      <p>You laugh — cracked, terrible, wonderful — and swing your other hand up. Estinien's grip closes over Cinna's belt, and the three of you haul back
+      onto solid stone as the last of the bridge falls away with a sound like a
+      closing door.</p>
+      <p><em>"You,"</em> says Estinien to the sky, <em>"are the two most foolish
+      creatures I have ever failed to get killed."</em> <em>"Thank you,"</em> you say. <em>"It was not a compliment."</em> <em>"Thank you anyway."</em></p>
+    `,
+    choices:[
+      { label:"Pick yourselves up. Go on.", next:"c8" }
+    ]
+  },
+
+  /* ===== CHAPTER 8 — The Fold ===== */
+  c8:{ chapter:8,
+    kicker:"The Sheltered Fold",
+    title:"This Is Your Road, Not Mine",
+    text:`
+      <p>When the storm blows out, Estinien goes still, and points — a small island
+      tucked in the lee of the mountains, a pocket of strange calm the eternal wind
+      never touches. <em>"A place a man's foot never falls,"</em> he says,
+      <em>"because it is not on the way to anywhere."</em> He almost smiles.
+      <em>"Go on. This is your road, not mine."</em></p>
+      <p>The last of it is a slender neck of stone, the clouds going gold with the
+      falling sun.</p>
+    `,
+    choices:[
+      { label:"Take Cinna's hand and climb the last hill together.", next:"__reveal__" },
+      { label:"Run up ahead alone — you have to see it for yourself, right now.", next:"end_alone" }
+    ]
+  },
+  end_alone:{ bad:true,
+    title:"Alone at the Top of the World",
+    text:`<p>You can't wait — you scramble up the last rise ahead of Cinna. And there,
+      over the crest, is a wash of blue, blurred by your own breath and your haste.
+      But when you turn, Cinna is still climbing behind you, and the color is not
+      the same seen alone. The whole song was about finding it <em>with someone.</em></p>`,
+    tease:"You saw it — but not together. Go back, and take her hand this time."
+  }
+};
+
+/* ---------- engine ---------- */
+const cardEl = document.getElementById('card');
+const roadEl = document.getElementById('road');
+const roadWrap = document.getElementById('roadWrap');
+
+function render(key){
+  const node = story[key];
+  if(!node) return;
+  if(node.chapter){
+    state.retryTo = CHAPTER_ENTRY[node.chapter];
+    roadWrap.style.opacity = 1;
+    roadEl.style.width = Math.round(100*node.chapter/8)+'%';
+  }
+  const txt = (node.text||'').replace(/%MULE%/g, state.muleName);
+
+  if(node.bad){
+    cardEl.innerHTML =
+      '<p class="kicker">'+(node.kicker||'An Ending')+'</p>'+
+      '<h1 class="scene-title end-title">'+node.title+'</h1>'+
+      '<div class="prose">'+txt+'</div>'+
+      '<div class="tease"><div class="tease-img"></div>'+
+        (node.tease?'<p class="tease-line">'+node.tease+'</p>':'')+'</div>'+
+      '<div class="choices">'+
+        '<button class="choice retry" data-act="retry">Try again — back to this chapter ↺</button>'+
+        '<button class="choice restart-soft" data-act="restart">Start over from the beginning</button>'+
+      '</div>';
+    cardEl.querySelector('[data-act="retry"]').addEventListener('click',()=>transitionTo(state.retryTo));
+    cardEl.querySelector('[data-act="restart"]').addEventListener('click',()=>{ state.muleName="Turnip"; transitionTo('c1'); });
+    window.scrollTo({top:0,behavior:'smooth'});
+    return;
+  }
+
+  cardEl.innerHTML =
+    (node.kicker?'<p class="kicker">'+node.kicker+'</p>':'')+
+    (node.title?'<h1 class="scene-title">'+node.title+'</h1>':'')+
+    '<div class="prose">'+txt+'</div>'+
+    '<div class="choices">'+
+      node.choices.map((c,i)=>'<button class="choice" data-i="'+i+'">'+c.label+'</button>').join('')+
+    '</div>';
+  cardEl.querySelectorAll('.choice').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const choice = node.choices[+btn.dataset.i];
+      if(choice.effect) choice.effect();
+      if(choice.next==='__reveal__'){ goToFinale(); return; }
+      transitionTo(choice.next);
+    });
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function transitionTo(key){
+  cardEl.classList.add('fading');
+  setTimeout(()=>{ render(key); cardEl.classList.remove('fading'); }, 520);
+}
+
+/* ---------- finale ---------- */
+function goToFinale(){
+  cardEl.classList.add('fading');
+  roadWrap.style.opacity = 0;
+  setTimeout(()=>{
+    document.querySelector('.stage').style.display='none';
+    const finale = document.getElementById('finale');
+    finale.classList.add('show');
+    document.getElementById('finaleLead').innerHTML = CONFIG.finaleLead;
+    const b = CONFIG.showBirthday ? '<p class="birthday">Happy Birthday, '+CONFIG.bridesmaidName+'</p>' : '';
+    const sign = CONFIG.signOff ? '<p class="sign">'+CONFIG.signOff+'</p>' : '';
+    document.getElementById('finaleMsg').innerHTML = b + CONFIG.finaleMessage + sign;
+    setTimeout(()=>document.getElementById('finaleLead').classList.add('in'), 200);
+    setTimeout(()=>document.getElementById('revealFrame').classList.add('in'), 1500);
+    setTimeout(()=>document.getElementById('finaleMsg').classList.add('in'), 3600);
+    setTimeout(()=>document.getElementById('replayBtn').classList.add('in'), 4400);
+    setTimeout(()=>document.getElementById('dlBtn').classList.add('in'), 4500);
+    window.scrollTo({top:0});
+  }, 520);
+}
+
+function restart(){
+  state.muleName="Turnip"; state.retryTo="c1";
+  const finale = document.getElementById('finale');
+  finale.classList.remove('show');
+  ['finaleLead','revealFrame','finaleMsg','replayBtn','dlBtn'].forEach(id=>document.getElementById(id).classList.remove('in'));
+  document.querySelector('.stage').style.display='';
+  roadWrap.style.opacity = 1;
+  cardEl.classList.remove('fading');
+  render('c1');
+}
+
+/* preload the reveal quietly so it lands instantly */
+(function preload(){ const i = new Image(); i.src = 'assets/blue-field.jpg'; })();
+
+/* drifting petals */
+(function petals(){
+  const N = 14;
+  for(let i=0;i<N;i++){
+    const p = document.createElement('div');
+    p.className = 'petal';
+    p.style.left = Math.random()*100+'vw';
+    const dur = 10+Math.random()*12;
+    p.style.animationDuration = dur+'s';
+    p.style.animationDelay = (-Math.random()*dur)+'s';
+    const s = 7+Math.random()*8;
+    p.style.width = s+'px'; p.style.height = s+'px';
+    p.style.opacity = .5+Math.random()*.3;
+    document.body.appendChild(p);
+  }
+})();
+
+/* the egg knows — crack, spill, smile */
+function initEgg(){
+  const egg=document.getElementById('egg'), pop=document.getElementById('eggPop');
+  if(!egg||!pop) return;
+  egg.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    pop.classList.add('in');
+    pop.classList.remove('go'); void pop.offsetWidth; pop.classList.add('go');
+  });
+  pop.addEventListener('click',()=>pop.classList.remove('in'));
+}
+if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', initEgg); } else { initEgg(); }
+
+render('c1');
+</script>
+<div id="eggPop">
+  <svg id="eggSvg" viewBox="0 0 200 150" width="188" height="141" aria-hidden="true">
+    <defs>
+      <clipPath id="cT"><polygon points="58,14 142,14 142,72 138,72 134,66 126,72 118,66 110,72 102,66 94,72 86,66 78,72 70,66 62,72 58,72"/></clipPath>
+      <clipPath id="cB"><polygon points="58,72 62,72 70,66 78,72 86,66 94,72 102,66 110,72 118,66 126,72 134,66 138,72 142,72 142,150 58,150"/></clipPath>
+      <radialGradient id="yg" cx="40%" cy="35%">
+        <stop offset="0%" stop-color="#ffdf6b"/><stop offset="65%" stop-color="#f4b81e"/><stop offset="100%" stop-color="#e0980f"/>
+      </radialGradient>
+    </defs>
+    <g class="shellBot" clip-path="url(#cB)"><ellipse cx="100" cy="70" rx="38" ry="48" fill="#f6f3e8" stroke="#e9e4d3" stroke-width="1.5"/></g>
+    <ellipse class="ewhite" cx="100" cy="116" rx="60" ry="22" fill="#fbfaf3"/>
+    <circle class="yolk" cx="100" cy="108" r="24" fill="url(#yg)"/>
+    <circle class="yolkShine" cx="90" cy="99" r="7" fill="#fff3b8" opacity="0.75"/>
+    <g class="eface">
+      <circle cx="90" cy="104" r="3.4" fill="#8a5f12"/>
+      <circle cx="110" cy="104" r="3.4" fill="#8a5f12"/>
+      <path d="M87 114 Q100 125 113 114" stroke="#8a5f12" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+    <g class="shellTop" clip-path="url(#cT)"><ellipse cx="100" cy="70" rx="38" ry="48" fill="#fdfcf6" stroke="#e9e4d3" stroke-width="1.5"/></g>
+  </svg>
+  <div class="eggCap">Egg&nbsp;#2 &amp; Egg&nbsp;#3 — hard on the outside, all soft yolk within. 💛</div>
+</div>
+<div id="egg" title="?">🥚</div>
+</body>
+</html>
